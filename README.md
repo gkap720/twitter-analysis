@@ -37,6 +37,10 @@ By default this will create a train set of 50k samples. You can set a larger siz
 Data about the training will be stored in the `mlruns` directory.
 ### View visualizations of the training run
 `mlflow ui`
+
+If there is not enough time to train the model, check out some example runs by running:
+
+`mlflow ui --backend-store-uri example_runs`
 ### Evaluate model on test set
 `python -m src.models.eval`
 ### Create Docker image
