@@ -9,6 +9,7 @@ from .sentiment_model import SentimentModel
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 import logging
 import argparse
+import os
 
 if __name__ == "__main__":
     logger = logging.getLogger("Train")
@@ -49,9 +50,11 @@ if __name__ == "__main__":
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
+    dirname = os.path.dirname(__file__)
+    
     # Define paths and parameters
-    train_path = '../../data/train.csv'
-    val_path = '../../data/val.csv'
+    train_path = os.path.join(dirname, '../../data/train.csv')
+    val_path = os.path.join(dirname, '../../data/val.csv')
 
     # Create an instance of the custom dataset
     train = TwitterDataset(train_path)
@@ -116,11 +119,11 @@ if __name__ == "__main__":
         if avg_epoch_val_loss < min_val_loss:
             min_val_loss = avg_epoch_val_loss
             best_epoch = epoch
-            torch.save(model.state_dict(), "best_model.pth")
+            torch.save(model.state_dict(), "models/best_model.pth")
         else:
             if epoch - best_epoch >= patience:
                 print("Early stopping triggered.")
                 break
     
-    mlflow.log_artifact("best_model.pth", artifact_path="best_weights")
+    mlflow.log_artifact("models/best_model.pth", artifact_path="best_weights")
     mlflow.end_run()

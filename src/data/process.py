@@ -7,7 +7,9 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import torch
 from torch.nn.utils.rnn import pad_sequence
-
+import os
+import argparse
+import math
 
 stops = set(stopwords.words('english'))
 lemmatizer = WordNetLemmatizer()
@@ -51,10 +53,17 @@ def collate_fn(batch):
     return padded_texts, torch.tensor(labels), torch.tensor(lengths)
 
 if __name__ == "__main__":
-    train_size = 200_000 #200_000
-    val_size = 60_000 #60_000
-    test_size = 60_000 # 60_000
-    data_path = "../../data/training.1600000.processed.noemoticon.csv"
+    parser = argparse.ArgumentParser("processor")
+    parser.add_argument("-size", "--training-size", 
+                        help="The size of the train set. Test and val sets are 30% of this size", 
+                        type=int, default=50000)
+    args = parser.parse_args()
+    
+    train_size = args.training_size #200_000
+    val_size = math.floor(train_size * 0.3) #60_000
+    test_size = math.floor(train_size * 0.3) # 60_000
+    dirname = os.path.dirname(__file__)
+    data_path = os.path.join(dirname, "../../data/training.1600000.processed.noemoticon.csv")
 
     # the data is sorted first by negative reviews and then positive
     negative = pd.read_csv(data_path, 
@@ -76,7 +85,7 @@ if __name__ == "__main__":
     pos_test, pos_val = train_test_split(pos_inter, test_size=0.5)
     df_test = pd.concat([neg_test, pos_test])
     df_val = pd.concat([neg_val, pos_val])
-    df_train.to_csv("../../data/train.csv")
-    df_test.to_csv("../../data/test.csv")
-    df_val.to_csv("../../data/val.csv")
+    df_train.to_csv(os.path.join(dirname, "../../data/train.csv"))
+    df_test.to_csv(os.path.join(dirname, "../../data/test.csv"))
+    df_val.to_csv(os.path.join(dirname, "../../data/val.csv"))
     

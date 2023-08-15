@@ -9,7 +9,7 @@ app = FastAPI()
 
 model = SentimentModel(50, 20)
 dirname = os.path.dirname(__file__)
-model_path = os.path.join(dirname, "./models/best_model.pth")
+model_path = "./models/best_model.pth"
 model.load_state_dict(torch.load(model_path))
 word2vec_transfer = api.load("glove-twitter-50")
 

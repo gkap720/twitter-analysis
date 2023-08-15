@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
     model = SentimentModel(50, 20)
     dirname = os.path.dirname(__file__)
-    model_path = os.path.join(dirname, "./best_model.pth")
+    model_path = "best_model.pth"
     model.load_state_dict(torch.load(model_path))
 
     test_path = os.path.join(dirname, '../../data/test.csv')
