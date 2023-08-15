@@ -1,0 +1,15 @@
+artifact_uri: file:///home/greg/complori_task/notebooks/mlruns/0/f22c1b9bcfb74635b495683951cc9cb8/artifacts
+end_time: 1692036749931
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+name: ''
+run_id: f22c1b9bcfb74635b495683951cc9cb8
+run_uuid: f22c1b9bcfb74635b495683951cc9cb8
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1692036714454
+status: 4
+tags: []
+user_id: greg

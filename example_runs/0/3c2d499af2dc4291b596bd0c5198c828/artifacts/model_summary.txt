@@ -1,0 +1,25 @@
+Model: "sequential_22"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ masking_22 (Masking)        (None, 33, 50)            0         
+                                                                 
+ conv1d (Conv1D)             (None, 31, 16)            2416      
+                                                                 
+ lstm_37 (LSTM)              (None, 31, 20)            2960      
+                                                                 
+ lstm_38 (LSTM)              (None, 20)                3280      
+                                                                 
+ dense_73 (Dense)            (None, 64)                1344      
+                                                                 
+ dense_74 (Dense)            (None, 64)                4160      
+                                                                 
+ dense_75 (Dense)            (None, 32)                2080      
+                                                                 
+ dense_76 (Dense)            (None, 1)                 33        
+                                                                 
+=================================================================
+Total params: 16273 (63.57 KB)
+Trainable params: 16273 (63.57 KB)
+Non-trainable params: 0 (0.00 Byte)
+_________________________________________________________________
