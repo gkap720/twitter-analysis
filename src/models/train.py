@@ -1,46 +1,47 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 import mlflow
 import mlflow.pytorch
-
-class SentimentModel(nn.Module):
-    def __init__(self, input_size, hidden_size):
-        super(SentimentModel, self).__init__()
-        self.masking = nn.Sequential(nn.Dropout(p=0.0), nn.Identity())  # No masking in PyTorch
-        self.lstm1 = nn.LSTM(input_size, hidden_size, batch_first=True, bidirectional=True)
-        self.lstm2 = nn.LSTM(hidden_size, hidden_size, batch_first=True, bidirectional=True)
-        self.fc1 = nn.Linear(hidden_size, 50)
-        self.fc2 = nn.Linear(50, 50)
-        self.fc3 = nn.Linear(50, 25)
-        self.fc4 = nn.Linear(25, 1)
-        self.activation = nn.Tanh()
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        x = self.masking(x)
-        x, _ = self.lstm1(x)
-        x, _ = self.lstm2(x)
-        x = self.activation(x)
-        x = self.fc1(x)
-        x = self.activation(x)
-        x = self.fc2(x)
-        x = self.activation(x)
-        x = self.fc3(x)
-        x = self.activation(x)
-        x = self.fc4(x)
-        x = self.sigmoid(x)
-        return x
+from ..data.twitter_dataset import TwitterDataset
+from .sentiment_model import SentimentModel
+from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
+import logging
+import argparse
 
 
 if __name__ == "__main__":
+    logger = logging.getLogger("Train")
+    logger.setLevel(logging.INFO)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    logger.addHandler(ch)
+    logger.info("Start training")
+
+    parser = argparse.ArgumentParser("trainer")
+    parser.add_argument("-lr", "--learning-rate", 
+                        help="The learning rate for the optimizer", 
+                        type=float, default=0.0008)
+    parser.add_argument("-b", "--batch-size", 
+                        help="The batch size used during training and validation", 
+                        type=int, default=32)
+    parser.add_argument("-p", "--patience", 
+                        help="The patience value for the early stopping criterion", 
+                        type=int, default=5)
+    args = parser.parse_args()
+
     # Define hyperparameters
     input_size = 50
     hidden_size = 20
-    learning_rate = 0.0008
+    learning_rate = args.learning_rate
     epochs = 100
-    batch_size = 32
+    batch_size = args.batch_size
+
+    # Early stopping params
+    patience = args.patience
+    min_val_loss = float("inf")
+    best_epoch = 0
 
     # Create model
     model = SentimentModel(input_size, hidden_size)
@@ -49,35 +50,78 @@ if __name__ == "__main__":
     criterion = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    # Convert data to PyTorch tensors if they are not already
+    # Define paths and parameters
+    train_path = '../../data/train.csv'
+    val_path = '../../data/val.csv'
+
+    # Create an instance of the custom dataset
+    train = TwitterDataset(train_path)
+    val = TwitterDataset(val_path)
+
+    def collate_fn(batch):
+        filtered_batch = [item for item in batch if item is not None]
+        if len(filtered_batch) == 0:
+            return None
+        texts, labels, lengths = zip(*filtered_batch)
+        padded_texts = pad_sequence(texts, batch_first=True)
+        return padded_texts, torch.tensor(labels), torch.tensor(lengths)
     
+    logger.info("Load data")
+    # Create a DataLoader for the dataset
+    train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+    val_loader = DataLoader(val, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+
+    logger.info("Start run")
     mlflow.start_run()  # Start an MLflow run
 
     # Log hyperparameters
     mlflow.log_param("learning_rate", learning_rate)
+    mlflow.log_param("patience", patience)
     mlflow.log_param("epochs", epochs)
     mlflow.log_param("batch_size", batch_size)
 
     # Training loop
     for epoch in range(epochs):
+        logger.info("Epoch %s", epoch)
         model.train()
-        for i in range(0, len(X_train), batch_size):
-            batch_X = X_train[i:i+batch_size]
-            batch_y = y_train[i:i+batch_size]
-
+        loss_epoch = 0.0
+        for batch_text, batch_label, lengths in train_loader:
             optimizer.zero_grad()
-            outputs = model(batch_X)
-            loss = criterion(outputs, batch_y)
-            mlflow.log_metric("loss", loss, step=epoch)
+            lengths, sorted_indices = lengths.sort(descending=True)
+            x = pack_padded_sequence(batch_text[sorted_indices], lengths, batch_first=True, enforce_sorted=False)
+            outputs = model(x)
+            loss = criterion(outputs, batch_label[sorted_indices].float())
             loss.backward()
             optimizer.step()
-
+            loss_epoch += loss.item()
+        
+        mlflow.log_metric("loss", loss_epoch / len(train_loader), step=epoch)
+        logger.info("Loss: %f", loss_epoch / len(train_loader))
         # Validation
         with torch.no_grad():
             model.eval()
-            val_outputs = model(X_val)
-            val_loss = criterion(val_outputs, y_val)  # Calculate validation loss
-            mlflow.log_metric("val_loss", val_loss, step=epoch)
+            val_loss_epoch = 0.0
+            for batch_X_val, batch_y_val, lengths in val_loader:
+                lengths, sorted_indices = lengths.sort(descending=True)
+                x = pack_padded_sequence(batch_X_val[sorted_indices], lengths, batch_first=True, enforce_sorted=False)
+                val_outputs = model(x)
+                val_loss = criterion(val_outputs, batch_y_val[sorted_indices].float())
+                val_loss_epoch += val_loss.item()
+
+        avg_epoch_val_loss = val_loss_epoch / len(val_loader)
+        mlflow.log_metric("val_loss", avg_epoch_val_loss, step=epoch)
+        logger.info("Val Loss: %f", avg_epoch_val_loss)
+
+        # Early stopping criterion to avoid overfitting
+        # if the score doesn't improve on the val set after a certain number of epochs, stop training
+        if avg_epoch_val_loss < min_val_loss:
+            min_val_loss = avg_epoch_val_loss
+            best_epoch = epoch
+            torch.save(model.state_dict(), "best_model.pth")
+        else:
+            if epoch - best_epoch >= patience:
+                print("Early stopping triggered.")
+                break
     
-    mlflow.pytorch.log_model(model, "model")
+    mlflow.log_artifact("best_model.pth", artifact_path="best_weights")
     mlflow.end_run()

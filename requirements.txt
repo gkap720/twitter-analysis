@@ -4,3 +4,5 @@ uvicorn
 fastapi
 gensim
 nltk
+scikit-learn
+mlflow
