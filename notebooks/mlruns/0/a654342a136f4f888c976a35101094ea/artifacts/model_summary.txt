@@ -1,0 +1,23 @@
+Model: "sequential_21"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ masking_21 (Masking)        (None, 33, 50)            0         
+                                                                 
+ lstm_35 (LSTM)              (None, 33, 20)            5680      
+                                                                 
+ lstm_36 (LSTM)              (None, 20)                3280      
+                                                                 
+ dense_69 (Dense)            (None, 50)                1050      
+                                                                 
+ dense_70 (Dense)            (None, 50)                2550      
+                                                                 
+ dense_71 (Dense)            (None, 25)                1275      
+                                                                 
+ dense_72 (Dense)            (None, 1)                 26        
+                                                                 
+=================================================================
+Total params: 13861 (54.14 KB)
+Trainable params: 13861 (54.14 KB)
+Non-trainable params: 0 (0.00 Byte)
+_________________________________________________________________

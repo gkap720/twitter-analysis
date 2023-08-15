@@ -1,0 +1,1 @@
+Added a Conv1D layer before the recurrent layers to see if that would help capture similarities between groups of words.
