@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import torch
+from torch.nn.utils.rnn import pad_sequence
 
 
 stops = set(stopwords.words('english'))
@@ -40,6 +41,14 @@ def process_data(data: pd.DataFrame) -> pd.DataFrame:
     tweets = data[5]
     cleaned = tweets.map(clean_text)
     return pd.DataFrame({"target": target, "tweet": cleaned})
+
+def collate_fn(batch):
+    filtered_batch = [item for item in batch if item is not None]
+    if len(filtered_batch) == 0:
+        return None
+    texts, labels, lengths = zip(*filtered_batch)
+    padded_texts = pad_sequence(texts, batch_first=True)
+    return padded_texts, torch.tensor(labels), torch.tensor(lengths)
 
 if __name__ == "__main__":
     train_size = 200_000 #200_000

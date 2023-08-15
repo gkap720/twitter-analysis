@@ -10,7 +10,6 @@ from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 import logging
 import argparse
 
-
 if __name__ == "__main__":
     logger = logging.getLogger("Train")
     logger.setLevel(logging.INFO)
